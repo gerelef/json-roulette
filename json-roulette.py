@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.12
 import argparse
 import json
+import os
 import random
 import string
 import sys
@@ -132,7 +133,7 @@ def _parse_args(args) -> UserOptions:
     parser.add_argument("--composites-size-low", type=int, required=True)
     parser.add_argument("--composites-size-high", type=int, required=True)
     # optionals
-    parser.add_argument("--word-file", type=str, default="./resources/words", required=True)
+    parser.add_argument("--word-file", type=str, default=None, required=False)
     parser.add_argument("--word-sample-size", type=int, default=50, required=False)
     nested_flags_group = parser.add_mutually_exclusive_group(required=False)
     nested_flags_group.add_argument("--flat", default=False, action="store_true", required=False)
@@ -140,6 +141,11 @@ def _parse_args(args) -> UserOptions:
     parser.add_argument("--nested-max-depth", type=int, default=9999, required=False)
     parser.add_argument("--pretty", default=False, action="store_true", required=False)
     options = parser.parse_args(args)
+    tempfile = "/tmp/tempfile_words"
+    if not options.word_file:
+        import urllib.request
+        with open(tempfile, "wb") as word_file:
+            word_file.write(urllib.request.urlopen("https://raw.githubusercontent.com/gerelef/json-roulette/master/resources/words").read())
     assert 1 <= options.size
     assert 1 <= options.composites_size_low <= options.composites_size_high
     assert 1 <= options.word_sample_size
@@ -152,7 +158,7 @@ def _parse_args(args) -> UserOptions:
         output_size=options.size,
         composites_size_low=options.composites_size_low,
         composites_size_high=options.composites_size_high,
-        path_to_word_file=Path(options.word_file).expanduser().absolute(),
+        path_to_word_file=Path(options.word_file if options.word_file else tempfile).expanduser().absolute(),
         word_sample_size=options.word_sample_size,
         nested_chance=-1 if options.flat else options.nested_chance,
         nested_max_depth=1 if options.flat else options.nested_max_depth,
@@ -185,3 +191,6 @@ if __name__ == "__main__":
             options.nested_max_depth
         )
         print(json.dumps(generated, indent=4 if options.pretty else None))
+
+    if options.path_to_word_file.name == "tempfile_words":
+        os.remove(options.path_to_word_file)
