@@ -65,11 +65,11 @@ def generate_random_jfield(*primitive_generators: Callable[[], object]) -> tuple
 
 
 def generate_jobj(
-        current_depth: int,
         length_low: int,
         length_high: int,
         nested_chance: float,
-        nested_max_depth: int) -> dict:
+        nested_max_depth: int,
+        current_depth: int = 0) -> dict:
     out = {}
     jobj_length = random.randint(length_low, length_high)
     for i in range(jobj_length):
@@ -82,22 +82,22 @@ def generate_jobj(
         if current_depth < nested_max_depth and decide(nested_chance):
             key = random.choice(words)
             value = generate_jobj(
-                current_depth + 1,
                 length_low,
                 length_high,
                 nested_chance,
-                nested_max_depth
+                nested_max_depth,
+                current_depth=current_depth + 1,
             )
         out[key] = value
     return out
 
 
 def generate_jarr(
-        current_depth: int,
         length_low: int,
         length_high: int,
         nested_chance: float,
-        nested_max_depth: int) -> dict:
+        nested_max_depth: int,
+        current_depth: int = 0) -> dict:
     raise NotImplementedError()
 
 
@@ -186,13 +186,11 @@ if __name__ == "__main__":
     random.seed(options.seed)
     for i in range(options.output_size):
         generated = generate_jobj(
-            0,
             options.composites_size_low,
             options.composites_size_high,
             options.nested_chance,
             options.nested_max_depth
         ) if options.output_is_jobject_else_array else generate_jarr(
-            0,
             options.composites_size_low,
             options.composites_size_high,
             options.nested_chance,
