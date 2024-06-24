@@ -121,6 +121,8 @@ class UserOptions:
     nested_max_depth: int
     # --pretty
     pretty: bool
+    # --seed
+    seed: int
 
 
 def _parse_args(args) -> UserOptions:
@@ -140,9 +142,14 @@ def _parse_args(args) -> UserOptions:
     nested_flags_group.add_argument("--nested-chance", type=float, default=0.2, required=False)
     parser.add_argument("--nested-max-depth", type=int, default=9999, required=False)
     parser.add_argument("--pretty", default=False, action="store_true", required=False)
+    parser.add_argument("--seed", type=int, default=1337, required=False)
     options = parser.parse_args(args)
+    local_words = "resources/words"
     tempfile = "/tmp/tempfile_words"
-    if not options.word_file:
+    local_words_exists = Path(local_words).exists()
+    if local_words_exists:
+        tempfile = local_words
+    if not options.word_file and not local_words_exists:
         import urllib.request
         with open(tempfile, "wb") as word_file:
             word_file.write(urllib.request.urlopen("https://raw.githubusercontent.com/gerelef/json-roulette/master/resources/words").read())
@@ -162,13 +169,13 @@ def _parse_args(args) -> UserOptions:
         word_sample_size=options.word_sample_size,
         nested_chance=-1 if options.flat else options.nested_chance,
         nested_max_depth=1 if options.flat else options.nested_max_depth,
-        pretty=options.pretty
+        pretty=options.pretty,
+        seed=options.seed
     )
 
 
 words = []
 if __name__ == "__main__":
-    random.seed(1337)
     sys.setrecursionlimit(100_000)
     options = _parse_args(sys.argv[1:])
     with open(options.path_to_word_file, "r") as dictionary:
@@ -176,6 +183,7 @@ if __name__ == "__main__":
             words.append(line.strip())
         words = tuple(sorted(random.choices(words, k=options.word_sample_size)))
 
+    random.seed(options.seed)
     for i in range(options.output_size):
         generated = generate_jobj(
             0,
