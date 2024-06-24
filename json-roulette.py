@@ -130,6 +130,8 @@ class UserOptions:
     # --object
     # --array
     output_is_jobject_else_array: bool  # True means generate json objects, otherwise generate arrays
+    include_objects: bool  # True means generate json objects
+    include_arrays: bool  # True means generate json arrays
     # --word-file
     path_to_word_file: Path
     # --word-sample-size
@@ -153,6 +155,8 @@ def _parse_args(args) -> UserOptions:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--objects", default=False, action="store_true")
     group.add_argument("--arrays", default=False, action="store_true")
+    parser.add_argument("--exclude-objects", default=False, action="store_true")
+    parser.add_argument("--exclude-arrays", default=False, action="store_true")
     parser.add_argument("--composites-size-low", type=int, required=True)
     parser.add_argument("--composites-size-high", type=int, required=True)
     # optionals
@@ -186,6 +190,8 @@ def _parse_args(args) -> UserOptions:
     assert 1 <= options.nested_max_depth
     return UserOptions(
         output_is_jobject_else_array=options.objects,
+        include_objects=not options.exclude_objects,
+        include_arrays=not options.exclude_arrays,
         output_size=options.size,
         composites_size_low=options.composites_size_low,
         composites_size_high=options.composites_size_high,
@@ -216,10 +222,14 @@ if __name__ == "__main__":
         generate_random_bool,
         nullability_chance=options.nullable_chance
     )
+    composite_args = []
+    if options.include_objects:
+        composite_args.append(generate_jobj)
+    if options.include_arrays:
+        composite_args.append(generate_jarr)
     composite_generator = functools.partial(
         generate_random_jfield,
-        generate_jobj,
-        generate_jarr,
+        *composite_args,
         nullability_chance=options.nullable_chance
     )
     for i in range(options.output_size):
