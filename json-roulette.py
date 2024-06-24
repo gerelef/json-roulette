@@ -132,7 +132,7 @@ def _parse_args(args) -> UserOptions:
     parser.add_argument("--composites-size-low", type=int, required=True)
     parser.add_argument("--composites-size-high", type=int, required=True)
     # optionals
-    parser.add_argument("--word-file", type=str, default="./resources/words", required=False)
+    parser.add_argument("--word-file", type=str, default="./resources/words", required=True)
     parser.add_argument("--word-sample-size", type=int, default=50, required=False)
     nested_flags_group = parser.add_mutually_exclusive_group(required=False)
     nested_flags_group.add_argument("--flat", default=False, action="store_true", required=False)
