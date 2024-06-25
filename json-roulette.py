@@ -2,7 +2,7 @@
 import argparse
 import functools
 import json
-import os
+import math
 import random
 import string
 import sys
@@ -16,8 +16,7 @@ def decide(percentage: float) -> bool:
     """
     :param percentage: percentage <= 1.0
     """
-    assert percentage <= 1.0
-    return round(random.uniform(0, 1), 3) <= percentage
+    return round(random.uniform(0, 1), 3) <= min(percentage, 1.0)
 
 
 def field_roulette(json: dict) -> bool:
@@ -84,7 +83,7 @@ def generate_jobj(
                 composite_generator=composite_generator,
                 length_low=length_low,
                 length_high=length_high,
-                nested_chance=nested_chance,
+                nested_chance=min(nested_chance, math.log(nested_max_depth / (current_depth + 1))),
                 nested_max_depth=nested_max_depth,
                 current_depth=current_depth + 1,
             )
@@ -113,7 +112,7 @@ def generate_jarr(
                 composite_generator=composite_generator,
                 length_low=length_low,
                 length_high=length_high,
-                nested_chance=nested_chance,
+                nested_chance=min(nested_chance, math.log(nested_max_depth / (current_depth + 1))),
                 nested_max_depth=nested_max_depth,
                 current_depth=current_depth + 1,
             )
@@ -165,7 +164,7 @@ def _parse_args(args) -> UserOptions:
     nested_flags_group = parser.add_mutually_exclusive_group(required=False)
     nested_flags_group.add_argument("--flat", default=False, action="store_true", required=False)
     nested_flags_group.add_argument("--nested-chance", type=float, default=0.2, required=False)
-    parser.add_argument("--nested-max-depth", type=int, default=sys.getrecursionlimit() // 2, required=False)
+    parser.add_argument("--nested-max-depth", type=int, default=100, required=False)
     parser.add_argument("--pretty", default=False, action="store_true", required=False)
     parser.add_argument("--seed", default=time.time(), required=False)
     parser.add_argument("--nullable-chance", type=float, default=0.05, required=False)
@@ -175,7 +174,7 @@ def _parse_args(args) -> UserOptions:
     local_words_exists = Path(local_words).exists()
     if local_words_exists:
         tempfile = local_words
-    if not options.word_file and not local_words_exists:
+    if not options.word_file and not local_words_exists and not Path(tempfile).exists():
         import urllib.request
         with open(tempfile, "wb") as word_file:
             word_file.write(
@@ -188,6 +187,7 @@ def _parse_args(args) -> UserOptions:
     assert 1 <= options.word_sample_size
     assert 0.0 <= options.nested_chance <= 1.0
     assert 1 <= options.nested_max_depth
+    assert options.nested_max_depth <= (sys.getrecursionlimit() // 3)
     return UserOptions(
         output_is_jobject_else_array=options.objects,
         include_objects=not options.exclude_objects,
@@ -254,5 +254,11 @@ if __name__ == "__main__":
         )
         print(json.dumps(generated, indent=4 if options.pretty else None))
 
-    if options.path_to_word_file.name == "tempfile_words":
-        os.remove(options.path_to_word_file)
+
+        def dict_depth(d):
+            if isinstance(d, dict):
+                return 1 + (max(map(dict_depth, d.values())) if d else 0)
+            if isinstance(d, list):
+                return 1 + (max(map(dict_depth, d)) if d else 0)
+            return 0
+        # print(dict_depth(generated))
